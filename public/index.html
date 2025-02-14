@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рендер-сервис</title>
+</head>
+<body>
+    <h1>Загрузите .blend файл для рендеринга</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="blendFile" accept=".blend" required>
+        <button type="submit">Отправить на рендер</button>
+    </form>
+    <p id="status"></p>
+    <a id="downloadLink" style="display:none;" href="#">Скачать результат</a>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('blendFile', document.querySelector('input[type="file"]').files[0]);
+
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.text();
+            document.getElementById('status').textContent = result;
+
+            if (response.ok) {
+                const downloadLink = document.getElementById('downloadLink');
+                downloadLink.href = `/download/output_${Date.now()}.png`;
+                downloadLink.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
