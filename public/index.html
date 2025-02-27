@@ -4,36 +4,91 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Рендер-сервис</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Загрузите .blend файл для рендеринга</h1>
-    <form id="uploadForm" enctype="multipart/form-data">
-        <input type="file" name="blendFile" accept=".blend" required>
-        <button type="submit">Отправить на рендер</button>
-    </form>
-    <p id="status"></p>
-    <a id="downloadLink" style="display:none;" href="#">Скачать результат</a>
+    <div class="container">
+        <h1>Загрузите .blend файл для рендеринга</h1>
+        <p>Выберите файл и настройки рендеринга, затем нажмите "Отправить на рендер".</p>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" name="blendFile" accept=".blend" required>
+            <div>
+                <label for="resolution">Выберите разрешение:</label>
+                <select id="resolution" name="resolution">
+                    <option value="1920x1080">1920x1080 (Full HD)</option>
+                    <option value="1280x720">1280x720 (HD)</option>
+                    <option value="640x480">640x480 (SD)</option>
+                </select>
+            </div>
+            <div>
+                <label for="format">Выберите формат:</label>
+                <select id="format" name="format">
+                    <option value="PNG">PNG (Высокое качество)</option>
+                    <option value="JPEG">JPEG (Сжатый)</option>
+                </select>
+            </div>
+            <button type="submit">Отправить на рендер</button>
+        </form>
+        <div id="progressContainer" class="progress-container" style="display:none;">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+        <p id="status"></p>
+        <a id="downloadLink" style="display:none;" href="#">Скачать результат</a>
+    </div>
 
     <script>
         document.getElementById('uploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const statusElement = document.getElementById('status');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            statusElement.textContent = 'Загрузка файла...';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+
             const formData = new FormData();
             formData.append('blendFile', document.querySelector('input[type="file"]').files[0]);
+            formData.append('resolution', document.getElementById('resolution').value);
+            formData.append('format', document.getElementById('format').value);
 
-            const response = await fetch('/upload', {
-                method: 'POST',
-                body: formData
-            });
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
 
-            const result = await response.text();
-            document.getElementById('status').textContent = result;
+                if (!response.ok) {
+                    throw new Error('Ошибка при загрузке файла.');
+                }
 
-            if (response.ok) {
+                const result = await response.json();
+                statusElement.textContent = result.message;
+
                 const downloadLink = document.getElementById('downloadLink');
-                downloadLink.href = `/download/output_${Date.now()}.png`;
+                downloadLink.href = `/download/${result.filename}`;
                 downloadLink.style.display = 'block';
+
+                // Запускаем проверку статуса рендеринга
+                checkRenderStatus(result.filename);
+            } catch (error) {
+                statusElement.textContent = error.message;
+                console.error('Ошибка:', error);
             }
         });
+
+        async function checkRenderStatus(filename) {
+            const progressBar = document.getElementById('progressBar');
+            const interval = setInterval(async () => {
+                const response = await fetch(`/status/${filename}`);
+                const result = await response.json();
+                progressBar.style.width = result.progress + '%';
+
+                if (result.progress >= 100) {
+                    clearInterval(interval);
+                    document.getElementById('status').textContent = 'Рендеринг завершен!';
+                }
+            }, 1000); // Проверяем статус каждую секунду
+        }
     </script>
 </body>
 </html>
