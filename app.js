@@ -38,28 +38,30 @@ app.post('/upload', upload.single('blendFile'), async (req, res) => {
 
     const command = `blender -b ${blendFilePath} -o ${outputPath} -F ${format} -x 1 -f 1 -- --render-resolution ${resolution}`;
 
-    try {
-        const renderProcess = exec(command);
+    const renderProcess = exec(command);
 
-        renderProcess.stdout.on('data', (data) => {
-            console.log(`stdout: ${data}`);
-            // Обновление статуса рендеринга (примерно)
-            renderStatus[outputFileName] = Math.min(renderStatus[outputFileName] + 10, 100);
-        });
+    renderProcess.stdout.on('data', (data) => {
+        console.log(`stdout: ${data}`);
+        // Обновление статуса рендеринга (примерно)
+        renderStatus[outputFileName] = Math.min(renderStatus[outputFileName] + 10, 100);
+    });
 
-        renderProcess.on('close', (code) => {
-            console.log(`Рендеринг завершен с кодом: ${code}`);
-            renderStatus[outputFileName] = 100;
-            res.json({ message: 'Рендеринг завершен!', filename: outputFileName });
-        });
-    } catch (error) {
-        console.error(`Ошибка рендеринга: ${error}`);
-        res.status(500).send('Ошибка при рендеринге.');
-    } finally {
+    renderProcess.on('close', (code) => {
+        console.log(`Рендеринг завершен с кодом: ${code}`);
+        renderStatus[outputFileName] = 100;
+        res.json({ message: 'Рендеринг завершен!', filename: outputFileName });
         fs.unlink(blendFilePath, (err) => {
             if (err) console.error(`Ошибка удаления файла: ${err}`);
         });
-    }
+    });
+
+    renderProcess.on('error', (error) => {
+        console.error(`Ошибка рендеринга: ${error}`);
+        res.status(500).send('Ошибка при рендеринге.');
+        fs.unlink(blendFilePath, (err) => {
+            if (err) console.error(`Ошибка удаления файла: ${err}`);
+        });
+    });
 });
 
 app.get('/status/:filename', (req, res) => {
