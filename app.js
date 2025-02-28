@@ -36,7 +36,7 @@ app.post('/upload', upload.single('blendFile'), async (req, res) => {
 
     renderStatus[outputFileName] = 0; // Инициализация статуса рендеринга
 
-    const command = `blender -b ${blendFilePath} -o ${outputPath} -F ${format} -x 1 -f 1 -- --render-resolution ${resolution}`;
+    const command = `blender -b ${blendFilePath} -o //${outputPath} -F ${format.toUpperCase()} -x 1 -f 1 -- --render-resolution ${resolution}`;
 
     const renderProcess = exec(command);
 
